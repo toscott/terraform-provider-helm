@@ -50,6 +50,7 @@ var defaultAttributes = map[string]interface{}{
 	"replace":                    false,
 	"create_namespace":           false,
 	"lint":                       false,
+	"chart_needs_credentials":    false,
 }
 
 func resourceRelease() *schema.Resource {
@@ -99,6 +100,12 @@ func resourceRelease() *schema.Resource {
 				Optional:    true,
 				Sensitive:   true,
 				Description: "Password for HTTP basic authentication",
+			},
+			"chart_needs_credentials": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Passes credentials during helm chart download. See ",
+				Default:     defaultAttributes["chart_needs_credentials"],
 			},
 			"chart": {
 				Type:        schema.TypeString,
@@ -1102,7 +1109,6 @@ func resolveChartName(repository, name string) (string, string, error) {
 	if strings.Index(name, "/") == -1 && repository != "" {
 		name = fmt.Sprintf("%s/%s", repository, name)
 	}
-
 	return "", name, nil
 }
 
@@ -1125,16 +1131,19 @@ func chartPathOptions(d resourceGetter, m *Meta) (*action.ChartPathOptions, stri
 	}
 	version := getVersion(d, m)
 
+	log.Printf("[INFO] %s", fmt.Sprintf("Resolved repositoryUrl to: %s", repositoryURL))
+	log.Printf("[INFO] %s", fmt.Sprintf("Resolved chartName to: %s", chartName))
 	return &action.ChartPathOptions{
-		CaFile:   d.Get("repository_ca_file").(string),
-		CertFile: d.Get("repository_cert_file").(string),
-		KeyFile:  d.Get("repository_key_file").(string),
-		Keyring:  d.Get("keyring").(string),
-		RepoURL:  repositoryURL,
-		Verify:   d.Get("verify").(bool),
-		Version:  version,
-		Username: d.Get("repository_username").(string),
-		Password: d.Get("repository_password").(string),
+		CaFile:             d.Get("repository_ca_file").(string),
+		CertFile:           d.Get("repository_cert_file").(string),
+		KeyFile:            d.Get("repository_key_file").(string),
+		Keyring:            d.Get("keyring").(string),
+		RepoURL:            repositoryURL,
+		Verify:             d.Get("verify").(bool),
+		Version:            version,
+		Username:           d.Get("repository_username").(string),
+		Password:           d.Get("repository_password").(string),
+		PassCredentialsAll: d.Get("chart_needs_credentials").(bool),
 	}, chartName, nil
 }
 
